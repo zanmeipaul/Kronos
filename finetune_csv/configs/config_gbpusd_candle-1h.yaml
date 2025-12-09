@@ -39,7 +39,7 @@ model_paths:
   
   # experiment name - other paths will be generated based on this
   exp_name: "gbpusd_kline_1h_all"
-  base_path: "/content/drive/Kronos/finetune_csv/finetuned/"
+  base_path: "/content/drive/MyDrive/Kronos/finetune_csv/finetuned/"
 
   # the following paths will be generated based on exp_name, no need to modify manually
   # way 1: leave empty string, the system will generate the full path
