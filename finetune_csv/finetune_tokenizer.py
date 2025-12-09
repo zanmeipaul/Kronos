@@ -197,9 +197,9 @@ def train_tokenizer(model, device, config, save_dir, logger):
         start_epoch = checkpoint['epoch'] + 1
         best_val_loss = checkpoint.get('best_val_loss', float('inf'))
         if 'rng_state' in checkpoint:
-            torch.set_rng_state(checkpoint['rng_state'])
-            if torch.cuda.is_available():
-                torch.cuda.set_rng_state(checkpoint['cuda_rng_state'])
+            torch.set_rng_state(checkpoint['rng_state'].cpu())
+            if torch.cuda.is_available() and 'cuda_rng_state' in checkpoint and checkpoint['cuda_rng_state'] is not None:
+                torch.cuda.set_rng_state(checkpoint['cuda_rng_state'].cpu())
         logger.info(f"Resuming from epoch {start_epoch}")
         if rank == 0:
             print(f"Resuming from epoch {start_epoch}")
