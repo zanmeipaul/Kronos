@@ -166,6 +166,7 @@ class CustomFinetuneConfig:
         self.train_tokenizer = experiment_config.get('train_tokenizer', True)
         self.train_basemodel = experiment_config.get('train_basemodel', True)
         self.skip_existing = experiment_config.get('skip_existing', False)
+        self.resume = experiment_config.get('resume', False)
 
         unified_pretrained = experiment_config.get('pre_trained', None)
         self.pre_trained_tokenizer = experiment_config.get('pre_trained_tokenizer', unified_pretrained if unified_pretrained is not None else True)

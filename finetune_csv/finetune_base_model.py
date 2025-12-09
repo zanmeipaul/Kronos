@@ -265,8 +265,31 @@ def train_model(model, tokenizer, device, config, save_dir, logger):
 
     best_val_loss = float('inf')
     batch_idx_global = 0
+    start_epoch = 0
     
-    for epoch in range(config.basemodel_epochs):
+    checkpoint_path = os.path.join(save_dir, "last_checkpoint.pt")
+    
+    if getattr(config, 'resume', False) and os.path.exists(checkpoint_path):
+        logger.info(f"Loading checkpoint from {checkpoint_path}")
+        if rank == 0:
+            print(f"Loading checkpoint from {checkpoint_path}")
+        checkpoint = torch.load(checkpoint_path, map_location=device)
+        model_to_load = model.module if use_ddp else model
+        model_to_load.load_state_dict(checkpoint['model_state_dict']) # Note: Kronos model usually has load_state_dict, or I might need to use from_pretrained if structure changes, but for resume same structure is assumed.
+        # Actually standard torch load_state_dict works for nn.Module
+        optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        scheduler.load_state_dict(checkpoint['scheduler_state_dict'])
+        start_epoch = checkpoint['epoch'] + 1
+        best_val_loss = checkpoint.get('best_val_loss', float('inf'))
+        if 'rng_state' in checkpoint:
+            torch.set_rng_state(checkpoint['rng_state'])
+            if torch.cuda.is_available():
+                torch.cuda.set_rng_state(checkpoint['cuda_rng_state'])
+        logger.info(f"Resuming from epoch {start_epoch}")
+        if rank == 0:
+            print(f"Resuming from epoch {start_epoch}")
+    
+    for epoch in range(start_epoch, config.basemodel_epochs):
         epoch_start_time = time.time()
         model.train()
         
@@ -360,6 +383,20 @@ def train_model(model, tokenizer, device, config, save_dir, logger):
                 save_msg = f"Best model saved to: {model_save_path} (validation loss: {best_val_loss:.4f})"
                 logger.info(save_msg)
                 print(save_msg)
+        
+        # Save last checkpoint
+        if rank == 0:
+            checkpoint = {
+                'epoch': epoch,
+                'model_state_dict': (model.module if use_ddp else model).state_dict(),
+                'optimizer_state_dict': optimizer.state_dict(),
+                'scheduler_state_dict': scheduler.state_dict(),
+                'best_val_loss': best_val_loss,
+                'rng_state': torch.get_rng_state(),
+                'cuda_rng_state': torch.cuda.get_rng_state() if torch.cuda.is_available() else None
+            }
+            torch.save(checkpoint, checkpoint_path)
+            logger.info(f"Checkpoint saved to {checkpoint_path}")
     
     return best_val_loss
 

@@ -17,8 +17,10 @@ from finetune_base_model import train_model, create_dataloaders, setup_logging a
 
 class SequentialTrainer:
     
-    def __init__(self, config_path: str = None):
+    def __init__(self, config_path: str = None, resume: bool = False):
         self.config = CustomFinetuneConfig(config_path)
+        if resume:
+            self.config.resume = True
         self.rank = int(os.environ.get("RANK", "0"))
         self.world_size = int(os.environ.get("WORLD_SIZE", "1"))
         self.local_rank = int(os.environ.get("LOCAL_RANK", str(self.config.device_id if hasattr(self.config, 'device_id') else 0)))
@@ -326,10 +328,12 @@ def main():
                        help='Skip basemodel training phase')
     parser.add_argument('--skip-existing', action='store_true', 
                        help='Skip training for existing models')
+    parser.add_argument('--resume', action='store_true',
+                       help='Resume training from last checkpoint if available')
     
     args = parser.parse_args()
     
-    trainer = SequentialTrainer(args.config)
+    trainer = SequentialTrainer(args.config, args.resume)
     
     if args.skip_tokenizer:
         trainer.config.train_tokenizer = False
